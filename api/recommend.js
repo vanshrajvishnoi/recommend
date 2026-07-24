@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;   
   if (!apiKey) {
-    return res.status(500).json({ error: "Server misconfiguration: API key missing in .env file" });
+    return res.status(500).json({ error: "Server misconfiguration: API key missing" });
   }
 
   let body = req.body;
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing query or products array" });
   }
 
-  const GEMINI_MODEL = "gemini-1.5-flash"; // Or gemini-1.5-pro / gemini-2.0-flash
+  const GEMINI_MODEL = "gemini-2.5-flash"; 
   const GEMINI_API_VERSION = "v1beta";
 
   const productSummary = products.map(p => ({
