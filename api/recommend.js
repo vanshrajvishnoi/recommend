@@ -5,19 +5,31 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;   
   if (!apiKey) {
-    return res.status(500).json({ error: "Server misconfiguration: API key missing" });
+    return res.status(500).json({ error: "Server misconfiguration: API key missing in .env file" });
   }
 
-  const { query, products } = req.body;
+  let body = req.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      return res.status(400).json({ error: "Invalid JSON payload" });
+    }
+  }
+
+  const { query, products } = body || {};
   if (!query || !Array.isArray(products)) {
-    return res.status(400).json({ error: "Missing query or products" });
+    return res.status(400).json({ error: "Missing query or products array" });
   }
 
-  const GEMINI_MODEL = "gemini-3.1-flash-lite";
+  const GEMINI_MODEL = "gemini-1.5-flash"; // Or gemini-1.5-pro / gemini-2.0-flash
   const GEMINI_API_VERSION = "v1beta";
 
   const productSummary = products.map(p => ({
-    id: p.id, name: p.name, price: p.price, desc: p.description
+    id: p.id, 
+    name: p.name, 
+    price: p.price, 
+    desc: p.description
   }));
 
   const prompt = `
@@ -40,12 +52,14 @@ Do not output markdown code blocks (like \`\`\`json), explanations, or extra tex
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      return res.status(502).json({ error: errorData.error?.message || `Gemini HTTP ${response.status}` });
+      const errorData = await response.json().catch(() => ({}));
+      return res.status(502).json({ 
+        error: errorData.error?.message || `Gemini HTTP error ${response.status}` 
+      });
     }
 
     const data = await response.json();
-    if (!data.candidates || !data.candidates[0]) {
+    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
       return res.status(502).json({ error: "Invalid or empty response from Gemini API" });
     }
 
@@ -61,6 +75,6 @@ Do not output markdown code blocks (like \`\`\`json), explanations, or extra tex
 
     return res.status(200).json({ matchedIds });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to reach Gemini API" });
+    return res.status(500).json({ error: "Failed to reach Gemini API server" });
   }
 }
